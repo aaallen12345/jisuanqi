@@ -231,7 +231,7 @@
       <section class="column">
         <label for="oddsInput">输入两个或三个赔率</label>
         <div class="entry">
-          <input id="oddsInput" inputmode="decimal" autocomplete="off" placeholder="2.867 1.57 或 2.1 3.2 4.5" autofocus>
+          <input id="oddsInput" autocomplete="off" placeholder="2.867 1.57 或 2.1,3.2,4.5" autofocus>
         </div>
 
         <section id="allocationResult" class="result" aria-live="polite">
@@ -276,7 +276,7 @@
     function parseNumbers(text) {
       return text
         .trim()
-        .split(/\s+/)
+        .split(/[\s,，、/]+/)
         .filter(Boolean)
         .map(Number);
     }
