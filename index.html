@@ -303,6 +303,30 @@
     let amountInputCount = 0;
     let isSyncingAmounts = false;
 
+    const DEFAULT_TITLE = "赔率分配计算器";
+
+    function setMatchTitle(match) {
+      const title = String(match || "").trim() || DEFAULT_TITLE;
+      const heading = document.querySelector("h1");
+      if (heading) heading.textContent = title;
+      document.title = title;
+    }
+
+    function applyPrefillFromHash() {
+      const rawHash = window.location.hash.replace(/^#/, "");
+      if (!rawHash) return false;
+      const params = new URLSearchParams(rawHash);
+      const match = params.get("match") || "";
+      const odds = params.get("odds") || "";
+      if (match) setMatchTitle(match);
+      if (odds) {
+        oddsInput.value = odds;
+        renderAllocation();
+        return true;
+      }
+      return Boolean(match);
+    }
+
     function yuan(value) {
       return `$${value.toFixed(2)}`;
     }
@@ -627,6 +651,8 @@
     copyAllocationButton.addEventListener("click", () => copyResult(() => latestAllocationText, copyAllocationButton));
     copyAmountButton.addEventListener("click", () => copyResult(() => latestAmountText, copyAmountButton));
     renderAllocation();
+    applyPrefillFromHash();
+    window.addEventListener("hashchange", applyPrefillFromHash);
   </script>
 </body>
 </html>
