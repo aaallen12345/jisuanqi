@@ -50,6 +50,14 @@
       letter-spacing: 0;
     }
 
+    .event-name {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
     label {
       display: block;
       margin-bottom: 10px;
@@ -251,11 +259,12 @@
 </head>
 <body>
   <main>
+    <p class="event-name">赛事名称</p>
     <h1>赔率分配计算器</h1>
 
     <section class="settings">
       <label for="exchangeRateInput">菲律宾披索汇率</label>
-      <input id="exchangeRateInput" inputmode="decimal" autocomplete="off" value="61.78">
+      <input id="exchangeRateInput" inputmode="decimal" autocomplete="off" value="61.75">
     </section>
 
     <div class="workspace">
@@ -287,7 +296,7 @@
 
   <script>
     const TOTAL_STAKE = 100;
-    const DEFAULT_EXCHANGE_RATE = 61.78;
+    const DEFAULT_EXCHANGE_RATE = 61.75;
     const DEFAULT_BASE_STAKE = 100;
     const oddsInput = document.querySelector("#oddsInput");
     const exchangeRateInput = document.querySelector("#exchangeRateInput");
@@ -304,6 +313,7 @@
     let isSyncingAmounts = false;
 
     const DEFAULT_TITLE = "赔率分配计算器";
+    const DEFAULT_EVENT_NAME = "赛事名称";
 
     function setMatchTitle(match) {
       const title = String(match || "").trim() || DEFAULT_TITLE;
@@ -312,19 +322,26 @@
       document.title = title;
     }
 
+    function setEventName(league) {
+      const eventName = document.querySelector(".event-name");
+      if (eventName) eventName.textContent = String(league || "").trim() || DEFAULT_EVENT_NAME;
+    }
+
     function applyPrefillFromHash() {
       const rawHash = window.location.hash.replace(/^#/, "");
       if (!rawHash) return false;
       const params = new URLSearchParams(rawHash);
       const match = params.get("match") || "";
+      const league = params.get("league") || "";
       const odds = params.get("odds") || "";
+      if (league) setEventName(league);
       if (match) setMatchTitle(match);
       if (odds) {
         oddsInput.value = odds;
         renderAllocation();
         return true;
       }
-      return Boolean(match);
+      return Boolean(match || league);
     }
 
     function yuan(value) {
