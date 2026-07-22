@@ -58,6 +58,11 @@
       font-weight: 600;
     }
 
+    .settings {
+      max-width: 260px;
+      margin-bottom: 24px;
+    }
+
     .workspace {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -77,12 +82,12 @@
 
     .amount-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
       gap: 12px;
     }
 
     .amount-field {
-      min-width: 0;
+      min-width: 120px;
     }
 
     .amount-field span {
@@ -93,8 +98,25 @@
       font-weight: 700;
     }
 
+    .peso,
+    .peso-preview {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1.25;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .peso-preview {
+      min-height: 15px;
+      margin-left: 2px;
+    }
+
     input {
       width: 100%;
+      min-width: 0;
       min-height: 56px;
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -179,6 +201,10 @@
       white-space: nowrap;
     }
 
+    .value strong {
+      display: block;
+    }
+
     .profit {
       margin-top: 16px;
       border-radius: 8px;
@@ -227,6 +253,11 @@
   <main>
     <h1>赔率分配计算器</h1>
 
+    <section class="settings">
+      <label for="exchangeRateInput">菲律宾披索汇率</label>
+      <input id="exchangeRateInput" inputmode="decimal" autocomplete="off" value="61.78">
+    </section>
+
     <div class="workspace">
       <section class="column">
         <label for="oddsInput">输入两个或三个赔率</label>
@@ -235,7 +266,7 @@
         </div>
 
         <section id="allocationResult" class="result" aria-live="polite">
-          <p class="placeholder">输入两个或三个赔率后，按总投注 100 元展示投注分配。</p>
+          <p class="placeholder">输入两个或三个赔率后，按总投注 $100 展示投注分配。</p>
         </section>
 
         <button id="copyAllocationButton" class="copy-button" type="button">复制结果</button>
@@ -256,7 +287,10 @@
 
   <script>
     const TOTAL_STAKE = 100;
+    const DEFAULT_EXCHANGE_RATE = 61.78;
+    const DEFAULT_BASE_STAKE = 100;
     const oddsInput = document.querySelector("#oddsInput");
+    const exchangeRateInput = document.querySelector("#exchangeRateInput");
     const amountInputs = document.querySelector("#amountInputs");
     const allocationResult = document.querySelector("#allocationResult");
     const amountResult = document.querySelector("#amountResult");
@@ -270,7 +304,23 @@
     let isSyncingAmounts = false;
 
     function yuan(value) {
-      return `${value.toFixed(2)} 元`;
+      return `$${value.toFixed(2)}`;
+    }
+
+    function peso(value) {
+      return `≈ ₱${value.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}`;
+    }
+
+    function getExchangeRate() {
+      const rate = Number(exchangeRateInput.value);
+      return Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_EXCHANGE_RATE;
+    }
+
+    function pesoFromYuan(value) {
+      return peso(value * getExchangeRate());
     }
 
     function parseNumbers(text) {
@@ -321,6 +371,22 @@
       return Array.from(amountInputs.querySelectorAll(".amount-input"));
     }
 
+    function getPesoPreviewElements() {
+      return Array.from(amountInputs.querySelectorAll(".peso-preview"));
+    }
+
+    function clearPesoPreviews() {
+      getPesoPreviewElements().forEach((preview) => {
+        preview.textContent = "";
+      });
+    }
+
+    function updatePesoPreviews(stakes) {
+      getPesoPreviewElements().forEach((preview, index) => {
+        preview.textContent = Number.isFinite(stakes[index]) ? pesoFromYuan(stakes[index]) : "";
+      });
+    }
+
     function buildAmountInputs(count) {
       if (amountInputCount === count) {
         return;
@@ -339,6 +405,7 @@
         <div class="amount-field">
           <span>押 ${labelFor(index)}</span>
           <input class="amount-input" data-index="${index}" inputmode="decimal" autocomplete="off" placeholder="${labelFor(index)} 金额">
+          <small class="peso-preview"></small>
         </div>
       `).join("");
 
@@ -351,6 +418,12 @@
           renderAmount(Number(input.dataset.index));
         });
       });
+
+      const firstInput = getAmountInputElements()[0];
+      if (firstInput) {
+        firstInput.value = String(DEFAULT_BASE_STAKE);
+        activeAmountIndex = 0;
+      }
     }
 
     function renderCalculation(target, stakes, odds, modeText) {
@@ -362,18 +435,18 @@
       const profitLabel = profit >= 0 ? "稳赚约" : "预计亏损约";
 
       const text = [
-        ...stakes.map((stake, index) => `* 押 ${labelFor(index)}：${yuan(stake)}`),
-        ...payouts.map((payout, index) => `* ${labelFor(index)}赢：${yuan(payout)}`),
-        `→ ${profitLabel}：${yuan(Math.abs(profit))}`
+        ...stakes.map((stake, index) => `* 押 ${labelFor(index)}：${yuan(stake)}（${pesoFromYuan(stake)}）`),
+        ...payouts.map((payout, index) => `* ${labelFor(index)}赢：${yuan(payout)}（${pesoFromYuan(payout)}）`),
+        `→ ${profitLabel}：${yuan(Math.abs(profit))}（${pesoFromYuan(Math.abs(profit))}）`
       ].join("\n");
 
       target.innerHTML = `
         <p class="mode">${modeText}</p>
         <ul>
-          ${stakes.map((stake, index) => `<li><span>押 ${labelFor(index)}</span><span class="value">${yuan(stake)}</span></li>`).join("")}
-          ${payouts.map((payout, index) => `<li><span>${labelFor(index)} 赢</span><span class="value">${yuan(payout)}</span></li>`).join("")}
+          ${stakes.map((stake, index) => `<li><span>押 ${labelFor(index)}</span><span class="value"><strong>${yuan(stake)}</strong><small class="peso">${pesoFromYuan(stake)}</small></span></li>`).join("")}
+          ${payouts.map((payout, index) => `<li><span>${labelFor(index)} 赢</span><span class="value"><strong>${yuan(payout)}</strong><small class="peso">${pesoFromYuan(payout)}</small></span></li>`).join("")}
         </ul>
-        <div class="${profitClass}">→ ${profitLabel}：${yuan(Math.abs(profit))}</div>
+        <div class="${profitClass}">→ ${profitLabel}：${yuan(Math.abs(profit))}<small class="peso">${pesoFromYuan(Math.abs(profit))}</small></div>
       `;
 
       return text;
@@ -384,7 +457,7 @@
       latestAllocationText = "";
 
       if (!raw) {
-        allocationResult.innerHTML = '<p class="placeholder">输入两个或三个赔率后，按总投注 100 元展示投注分配。</p>';
+        allocationResult.innerHTML = '<p class="placeholder">输入两个或三个赔率后，按总投注 $100 展示投注分配。</p>';
         activeOdds = null;
         localStorage.removeItem("activeOdds");
         buildAmountInputs(0);
@@ -431,7 +504,7 @@
         allocationResult,
         stakes,
         odds,
-        "按总投注 100 元分配"
+        "按总投注 $100 分配"
       );
       renderAmount();
     }
@@ -461,6 +534,7 @@
           }
         });
         isSyncingAmounts = false;
+        clearPesoPreviews();
         amountResult.innerHTML = `<p class="placeholder">当前赔率：${oddsText(activeOdds)}。输入 A/B${activeOdds.length === 3 ? "/C" : ""} 任意一项金额后自动计算其它金额。</p>`;
         return;
       }
@@ -472,6 +546,7 @@
 
       if (baseIndex === -1) {
         activeAmountIndex = null;
+        clearPesoPreviews();
         amountResult.innerHTML = `<p class="placeholder">当前赔率：${oddsText(activeOdds)}。输入 A/B${activeOdds.length === 3 ? "/C" : ""} 任意一项金额后自动计算其它金额。</p>`;
         return;
       }
@@ -480,6 +555,7 @@
       const raw = inputs[baseIndex].value.trim();
       const numbers = parseNumbers(raw);
       if (numbers.length !== 1 || !Number.isFinite(numbers[0]) || numbers[0] <= 0) {
+        clearPesoPreviews();
         amountResult.innerHTML = '<p class="error">每个金额框只输入一个有效金额，例如：300。</p>';
         return;
       }
@@ -498,6 +574,7 @@
         }
       });
       isSyncingAmounts = false;
+      updatePesoPreviews(stakes);
 
       latestAmountText = renderCalculation(
         amountResult,
@@ -544,6 +621,9 @@
     }
 
     oddsInput.addEventListener("input", renderAllocation);
+    exchangeRateInput.addEventListener("input", () => {
+      renderAllocation();
+    });
     copyAllocationButton.addEventListener("click", () => copyResult(() => latestAllocationText, copyAllocationButton));
     copyAmountButton.addEventListener("click", () => copyResult(() => latestAmountText, copyAmountButton));
     renderAllocation();
