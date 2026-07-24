@@ -98,12 +98,25 @@
       min-width: 120px;
     }
 
-    .amount-field span {
-      display: block;
+    .amount-heading {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: baseline;
       margin-bottom: 8px;
+    }
+
+    .amount-heading span {
       color: var(--muted);
       font-size: 14px;
       font-weight: 700;
+    }
+
+    .amount-heading small {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
     }
 
     .peso,
@@ -310,6 +323,7 @@
     let activeOdds = loadOdds();
     let activeAmountIndex = null;
     let amountInputCount = 0;
+    let amountOddsKey = "";
     let isSyncingAmounts = false;
 
     const DEFAULT_TITLE = "赔率分配计算器";
@@ -428,12 +442,15 @@
       });
     }
 
-    function buildAmountInputs(count) {
-      if (amountInputCount === count) {
+    function buildAmountInputs(odds = []) {
+      const count = odds.length;
+      const oddsKey = odds.join("|");
+      if (amountInputCount === count && amountOddsKey === oddsKey) {
         return;
       }
 
       amountInputCount = count;
+      amountOddsKey = oddsKey;
       activeAmountIndex = null;
       latestAmountText = "";
 
@@ -444,7 +461,10 @@
 
       amountInputs.innerHTML = Array.from({ length: count }, (_, index) => `
         <div class="amount-field">
-          <span>押 ${labelFor(index)}</span>
+          <div class="amount-heading">
+            <span>押 ${labelFor(index)}</span>
+            <small>${odds[index]}</small>
+          </div>
           <input class="amount-input" data-index="${index}" inputmode="decimal" autocomplete="off" placeholder="${labelFor(index)} 金额">
           <small class="peso-preview"></small>
         </div>
@@ -501,7 +521,7 @@
         allocationResult.innerHTML = '<p class="placeholder">输入两个或三个赔率后，按总投注 $100 展示投注分配。</p>';
         activeOdds = null;
         localStorage.removeItem("activeOdds");
-        buildAmountInputs(0);
+        buildAmountInputs();
         renderAmount();
         return;
       }
@@ -512,7 +532,7 @@
         activeOdds = null;
         localStorage.removeItem("activeOdds");
         latestAmountText = "";
-        buildAmountInputs(0);
+        buildAmountInputs();
         amountResult.innerHTML = '<p class="error">赔率无效，无法计算金额。</p>';
         return;
       }
@@ -522,7 +542,7 @@
         activeOdds = null;
         localStorage.removeItem("activeOdds");
         latestAmountText = "";
-        buildAmountInputs(0);
+        buildAmountInputs();
         amountResult.innerHTML = '<p class="error">赔率无效，无法计算金额。</p>';
         return;
       }
@@ -532,14 +552,14 @@
         activeOdds = null;
         localStorage.removeItem("activeOdds");
         latestAmountText = "";
-        buildAmountInputs(0);
+        buildAmountInputs();
         amountResult.innerHTML = '<p class="error">赔率无效，无法计算金额。</p>';
         return;
       }
 
       const odds = numbers;
       saveOdds(odds);
-      buildAmountInputs(odds.length);
+      buildAmountInputs(odds);
       const stakes = getBalancedStakes(odds, TOTAL_STAKE);
       latestAllocationText = renderCalculation(
         allocationResult,
@@ -554,12 +574,12 @@
       latestAmountText = "";
 
       if (!activeOdds) {
-        buildAmountInputs(0);
+        buildAmountInputs();
         amountResult.innerHTML = '<p class="placeholder">先输入赔率，再输入任意一项金额。</p>';
         return;
       }
 
-      buildAmountInputs(activeOdds.length);
+      buildAmountInputs(activeOdds);
       const inputs = getAmountInputElements();
 
       if (changedIndex !== null) {
