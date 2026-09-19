@@ -449,6 +449,13 @@
         return;
       }
 
+      const previousInputs = getAmountInputElements();
+      const hadAmountInputs = previousInputs.length > 0;
+      const previousBaseIndex = activeAmountIndex;
+      const previousBaseValue = previousBaseIndex !== null && previousInputs[previousBaseIndex]
+        ? previousInputs[previousBaseIndex].value
+        : "";
+
       amountInputCount = count;
       amountOddsKey = oddsKey;
       activeAmountIndex = null;
@@ -480,9 +487,12 @@
         });
       });
 
-      const firstInput = getAmountInputElements()[0];
-      if (firstInput) {
-        firstInput.value = String(DEFAULT_BASE_STAKE);
+      const newInputs = getAmountInputElements();
+      if (previousBaseValue && previousBaseIndex < newInputs.length) {
+        newInputs[previousBaseIndex].value = previousBaseValue;
+        activeAmountIndex = previousBaseIndex;
+      } else if (!hadAmountInputs && newInputs[0]) {
+        newInputs[0].value = String(DEFAULT_BASE_STAKE);
         activeAmountIndex = 0;
       }
     }
@@ -515,45 +525,25 @@
 
     function renderAllocation() {
       const raw = oddsInput.value.trim();
-      latestAllocationText = "";
 
       if (!raw) {
         allocationResult.innerHTML = '<p class="placeholder">输入两个或三个赔率后，按总投注 $100 展示投注分配。</p>';
-        activeOdds = null;
-        localStorage.removeItem("activeOdds");
-        buildAmountInputs();
-        renderAmount();
         return;
       }
 
       const numbers = parseNumbers(raw);
       if (numbers.some((number) => !Number.isFinite(number) || number <= 0)) {
         allocationResult.innerHTML = '<p class="error">请输入两个或三个有效赔率，中间用空格隔开。</p>';
-        activeOdds = null;
-        localStorage.removeItem("activeOdds");
-        latestAmountText = "";
-        buildAmountInputs();
-        amountResult.innerHTML = '<p class="error">赔率无效，无法计算金额。</p>';
         return;
       }
 
       if (numbers.length !== 2 && numbers.length !== 3) {
         allocationResult.innerHTML = '<p class="error">只输入两个或三个赔率，例如：2.867 1.57 或 2.1 3.2 4.5。</p>';
-        activeOdds = null;
-        localStorage.removeItem("activeOdds");
-        latestAmountText = "";
-        buildAmountInputs();
-        amountResult.innerHTML = '<p class="error">赔率无效，无法计算金额。</p>';
         return;
       }
 
       if (numbers.some((odd) => odd <= 1)) {
         allocationResult.innerHTML = '<p class="error">赔率必须大于 1。</p>';
-        activeOdds = null;
-        localStorage.removeItem("activeOdds");
-        latestAmountText = "";
-        buildAmountInputs();
-        amountResult.innerHTML = '<p class="error">赔率无效，无法计算金额。</p>';
         return;
       }
 
